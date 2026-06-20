@@ -1,0 +1,17 @@
+{
+  "name": "web-reader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mobile markdown web reader",
+  "main": "source/server.js",
+  "scripts": {
+    "start": "node source/server.js",
+    "dev": "node --watch source/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
