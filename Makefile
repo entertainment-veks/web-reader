@@ -3,4 +3,4 @@
 publish:
 	git add source/*.md
 	git commit -m "Update chapters"
-	gpa git push
+	git push
