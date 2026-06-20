@@ -14,19 +14,24 @@
   box-sizing: border-box;
 }
 
-html,
+html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+}
+
 body {
   margin: 0;
   padding: 0;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
   background: radial-gradient(circle at 20% 0%, #161b22 0%, var(--bg) 48%);
   color: var(--text);
-}
-
-body {
   font-family: 'IBM Plex Sans', sans-serif;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .menu-button {
@@ -119,6 +124,8 @@ body {
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   scroll-padding-top: calc(72px + var(--safe-top));
+  background: var(--bg);
+  overscroll-behavior: none;
 }
 
 .chapter {
