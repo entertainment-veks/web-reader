@@ -141,3 +141,25 @@ renderReader().catch((error) => {
     </section>
   `;
 });
+
+// --- Visit tracking ---
+const sessionId = crypto.randomUUID();
+const sessionStart = Date.now();
+
+fetch('/api/track/start', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ sessionId })
+});
+
+function sendEndBeacon() {
+  const duration = Math.round((Date.now() - sessionStart) / 1000);
+  const payload = JSON.stringify({ sessionId, duration });
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon('/api/track/end', new Blob([payload], { type: 'application/json' }));
+  }
+}
+
+window.addEventListener('pagehide', sendEndBeacon);
+window.addEventListener('beforeunload', sendEndBeacon);
+

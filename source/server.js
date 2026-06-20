@@ -1,6 +1,9 @@
 const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
+const tracker = require('./tracker');
+
+const ADMIN_PASSWORD = '777';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -27,7 +30,92 @@ function chapterTitleFromFileName(fileName) {
     .trim();
 }
 
-app.get('/api/chapters', async (req, res) => {
+app.use(express.json());
+
+app.post('/api/track/start', (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 64) {
+    return res.status(400).json({ error: 'Invalid sessionId.' });
+  }
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || 'unknown';
+  tracker.startVisit(sessionId, ip);
+  res.json({ ok: true });
+});
+
+app.post('/api/track/end', (req, res) => {
+  const { sessionId, duration } = req.body;
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 64) {
+    return res.status(400).json({ error: 'Invalid sessionId.' });
+  }
+  tracker.endVisit(sessionId, duration);
+  res.json({ ok: true });
+});
+
+app.get('/admin', (req, res) => {
+  if (req.query.password !== ADMIN_PASSWORD) {
+    return res.status(401).send(`<!doctype html>
+<html><head><meta charset="UTF-8"><title>Admin</title>
+<style>
+  body{background:#0d0f12;color:#f5f7fa;font-family:sans-serif;display:grid;place-items:center;height:100vh;margin:0}
+  form{display:flex;flex-direction:column;gap:10px;align-items:center}
+  input{background:#12161c;border:1px solid #20262f;color:#f5f7fa;padding:8px 12px;border-radius:8px;font-size:1rem}
+  button{background:#6da8ff;color:#0d0f12;border:none;padding:8px 20px;border-radius:8px;font-size:1rem;cursor:pointer}
+</style></head><body>
+<form method="GET" action="/admin">
+  <h2>Admin</h2>
+  <input type="password" name="password" placeholder="Password" autofocus />
+  <button type="submit">Enter</button>
+</form>
+</body></html>`);
+  }
+
+  const visits = tracker.readVisits();
+  const total = visits.length;
+  const withDuration = visits.filter((v) => v.duration !== null);
+  const avgDuration = withDuration.length
+    ? Math.round(withDuration.reduce((s, v) => s + v.duration, 0) / withDuration.length)
+    : 0;
+
+  function fmtDuration(sec) {
+    if (sec === null) return '—';
+    if (sec < 60) return `${sec}s`;
+    return `${Math.floor(sec / 60)}m ${sec % 60}s`;
+  }
+
+  const rows = [...visits]
+    .reverse()
+    .map(
+      (v) => `<tr>
+    <td>${new Date(v.startedAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}</td>
+    <td>${fmtDuration(v.duration)}</td>
+    <td>${v.ip}</td>
+  </tr>`
+    )
+    .join('');
+
+  res.send(`<!doctype html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Visits</title>
+<style>
+  *{box-sizing:border-box}
+  body{background:#0d0f12;color:#f5f7fa;font-family:sans-serif;padding:24px;margin:0}
+  h1{font-size:1.4rem;margin:0 0 6px}
+  .stats{color:#aeb6c2;margin-bottom:20px;font-size:0.95rem}
+  table{width:100%;border-collapse:collapse;font-size:0.9rem}
+  th{text-align:left;color:#aeb6c2;padding:8px 10px;border-bottom:1px solid #20262f}
+  td{padding:8px 10px;border-bottom:1px solid #161b22}
+  tr:hover td{background:#12161c}
+</style></head><body>
+<h1>Visits</h1>
+<p class="stats">Total: <b>${total}</b> &nbsp;|&nbsp; Avg time: <b>${fmtDuration(avgDuration)}</b></p>
+<table>
+  <thead><tr><th>Time (MSK)</th><th>Duration</th><th>IP</th></tr></thead>
+  <tbody>${rows || '<tr><td colspan="3" style="color:#aeb6c2">No visits yet</td></tr>'}</tbody>
+</table>
+</body></html>`);
+});
+
+
   try {
     const entries = await fs.readdir(projectRoot, { withFileTypes: true });
 
@@ -67,7 +155,7 @@ app.get('/api/chapter/:fileName', async (req, res) => {
   }
 });
 
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(publicDir, 'index.html'));
 });
 
