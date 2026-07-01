@@ -115,7 +115,7 @@ app.get('/admin', (req, res) => {
 </body></html>`);
 });
 
-
+app.get('/api/chapters', async (req, res) => {
   try {
     const entries = await fs.readdir(projectRoot, { withFileTypes: true });
 
